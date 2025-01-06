@@ -22,19 +22,22 @@ def lpdft_trans_HellmanFeynman_dipole(mc, mo_coeff=None, state=None, ci=None, ci
     
     mol = mc.mol
     ncore = mc.ncore
-    print('Printing ncore here - Helen: ', ncore)
     ncas = mc.ncas
-    nocc = ncore + ncas
     nocc = ncas
+    nocc = ncore + ncas
     nelecas = mc.nelecas
 
+    #mo_core = mo_coeff[:,:nocc]
     mo_cas = mo_coeff[:,ncore:nocc]
-    mo_cas = mo_coeff[:, :nocc]
 
-    casdm1 = direct_spin1.trans_rdm12 (ci[state[0]], ci[state[1]], mc.ncas, mc.nelecas)[0]
+    casdm1 = direct_spin1.trans_rdm12(ci_bra, ci_ket, ncas, nelecas)[0]
     casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
-
-    tdm = reduce(np.dot, (mo_cas, casdm1, mo_cas.T))
+    
+    #dm_core = np.dot(mo_core, mo_core.T) * 2
+    dm_cas = reduce(np.dot, (mo_cas, casdm1, mo_cas.T))
+    
+    #tdm = dm_cas + dm_core
+    tdm = dm_cas 
 
     center = get_guage_origin(mol,origin)
     with mol.with_common_orig(center):
