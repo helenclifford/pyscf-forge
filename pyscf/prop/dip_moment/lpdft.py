@@ -160,8 +160,12 @@ class ElectricDipole (lpdft_grad.Gradients):
         casdm1_transit += casdm1_transit.transpose (1,0)
 
         dm_cas_transit = reduce(np.dot, (mo_cas, casdm1_transit, mo_cas.T))
+        
+        if hasattr (state, '__len__'):
+            dm = dmL_cas + dm_cas_transit
 
-        dm = dmL_core + dmL_cas + dm_cas_transit
+        else:
+            dm = dmL_core + dmL_cas + dm_cas_transit
 
         center = get_guage_origin(mol, origin)
         with mol.with_common_orig(center):
