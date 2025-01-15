@@ -300,7 +300,6 @@ def lpdft_HellmanFeynman_grad(
     dm1 = dm1s[0] + dm1s[1]
     casdm2 = mc.make_one_casdm2(ci=ci, state=state)
 
-    print('IS THIS GETTING CALLED OR NAWH???')
     # The model-space density (or state-average density)
     casdm1s_0, casdm2_0 = mc.get_casdm12_0()
     dm1s_0 = _dms.casdm1s_to_dm1s(mc, casdm1s=casdm1s_0, mo_coeff=mo_coeff)
@@ -462,22 +461,15 @@ class Gradients(sacasscf.Gradients):
         if ci is None:
             ci = self.base.ci
 
-        if verbose is None:
-            verbose = self.verbose
-
         if (feff1 is None) or (feff2 is None):
             feff1, feff2 = self.get_otp_gradient_response(mo, ci, state)
 
         log = logger.new_logger(self, verbose)
         
-        print('Printing state here - AAAAAHHHHHHH', state)
-        print('Printing state here - WAHHHHHHHH', state[0], state[1])
-
         if hasattr (state, '__len__'): 
-            #state = list(map(int, state))
             trans=True
             ndet = self.na_states[state[0]] * self.nb_states[state[0]]
-            fcasscf = self.make_fcasscf(state)
+            fcasscf = self.make_fcasscf(state[0])
 
         else:   
             trans=False
@@ -489,7 +481,7 @@ class Gradients(sacasscf.Gradients):
         fcasscf_sa = self.make_fcasscf_sa()
 
         fcasscf.mo_coeff = mo
-        #fcasscf.ci = ci[state]
+        fcasscf.ci = ci[state[0]]
 
         fcasscf.get_hcore = self.base.get_lpdft_hcore
         fcasscf_sa.get_hcore = lambda: feff1
@@ -526,11 +518,6 @@ class Gradients(sacasscf.Gradients):
         log.debug("g_all implicit orb:\n{}".format(g_all_implicit[: self.ngorb]))
         log.debug("g_all implicit ci:\n{}".format(g_all_implicit[self.ngorb :]))
     
-        #print('Printing g_all explicit orb here: ', g_all_explicit[: self.ngorb])
-        #print('Printing g_all explicit ci here: ', g_all_explicit[self.ngorb :])
-        #print('Printing g_all implicit orb', g_all_implicit[: self.ngorb])
-        #print('Printing g_all implicit ci', g_all_implicit[self.ngorb :])
-
         # Need to remove the SA-SA rotations from g_all_implicit CI contributions
         spin_states = np.asarray(self.spin_states)
         gmo_implicit, gci_implicit = self.unpack_uniq_var(g_all_implicit)
@@ -559,10 +546,10 @@ class Gradients(sacasscf.Gradients):
                         na * nb
                         for na, nb in zip(self.na_states[:state], self.nb_states[:state])
                     ]
-                    )
+                )
                 if root > 0
                 else 0
-                    )
+            )
             g_all[self.ngorb :][offs:][:ndet] += g_all_explicit[self.ngorb :]
 
         gorb, gci = self.unpack_uniq_var(g_all)
@@ -649,6 +636,7 @@ class Gradients(sacasscf.Gradients):
 
         ncas, nelecas = self.base.ncas, self.base.nelecas
         ncore = self.base.ncore
+        nocc = ncas + ncore
 
         if hasattr (state, '__len__'): 
             trans = True

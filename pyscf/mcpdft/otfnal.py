@@ -68,7 +68,7 @@ def energy_ot (ot, casdm1s, casdm2, mo_coeff, ncore, max_memory=2000, hermi=1):
     ni, xctype = ot._numint, ot.xctype
     if xctype=='HF': return E_ot
     dens_deriv = ot.dens_deriv
-    rho_c = None                #set rho_c = None here - Helen
+    #rho_c = None                #set rho_c = None here - Helen
 
     nao = mo_coeff.shape[0]
     ncas = casdm2.shape[0]

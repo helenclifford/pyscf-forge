@@ -5,7 +5,7 @@ from pyscf import lib
 from functools import reduce
 from pyscf.prop.dip_moment import lpdft
 from pyscf.grad import lpdft as lpdft_grad
-from pyscf.prop.dip_moment.mcpdft import get_guage_origin
+from pyscf.prop.dip_moment.mcpdft import get_guage_origin, nuclear_dipole
 from pyscf.fci import direct_spin1
 from pyscf.grad.mspdft import _unpack_state
 from pyscf.nac.sacasscf import gen_g_hop_active
@@ -27,9 +27,16 @@ def lpdft_trans_HellmanFeynman_dipole(mc, mo_coeff=None, state=None, ci=None, ci
     ncas = mc.ncas
     nocc = ncore + ncas
     nelecas = mc.nelecas
+    print('Printing ncore here: ', ncore)
+    print('Printing ncas here: ', ncas)
+    print('Printing nocc here: ', nocc)
+    print('Printing mo_coeff here: ', mo_coeff)
 
     mo_core = mo_coeff[:,:nocc]
     mo_cas = mo_coeff[:,ncore:nocc]
+    
+    print('Printing mo_core here: ', mo_core)
+    print('Printing mo_cas here: ', mo_cas)
 
     casdm1 = direct_spin1.trans_rdm12(ci[state[0]], ci[state[1]], ncas, nelecas)[0]
     casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
@@ -71,14 +78,15 @@ class TransitionDipole (lpdft.ElectricDipole):
         if verbose is None: verbose = self.verbose
         if mo is None: mo      = self.base.mo_coeff
         if ci is None: ci      = self.base.ci
+        ket, bra = _unpack_state (state)
 
-        fcasscf = self.make_fcasscf_lpdft_trans(state[0])
+        fcasscf = self.make_fcasscf_lpdft_trans(ket)
         #fcasscf = self.make_fcasscf(state)
         fcasscf.mo_coeff = mo
         fcasscf.ci = ci
 
         elec_term = lpdft_trans_HellmanFeynman_dipole (fcasscf, mo_coeff=mo, state=state, ci=ci, ci_bra = ci[state[0]], ci_ket = ci[state[1]], origin=origin)
-        return elec_term
+        return elec_term       
 
     def make_fcasscf_lpdft_trans (self, state=None, casscf_attr=None,fcisolver_attr=None):
         if state is None: state = self.state
@@ -86,10 +94,6 @@ class TransitionDipole (lpdft.ElectricDipole):
         if fcisolver_attr is None: fcisolver_attr = {}
         ket, bra = _unpack_state (state)
         ci, ncas, nelecas = self.base.ci, self.base.ncas, self.base.nelecas
-
-        #casdm1, casdm2 = direct_spin1.trans_rdm12 (ci[state[0]], ci[state[1]], self.ncas, self.nelecas)
-        #casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
-        #casdm2 = 0.5 * (casdm2 + casdm2.transpose(1,0,3,2))
 
         casdm1, casdm2 = direct_spin1.trans_rdm12 (ci[bra], ci[ket], ncas, nelecas)
         casdm1 = 0.5 * (casdm1 + casdm1.T)
@@ -112,7 +116,7 @@ class TransitionDipole (lpdft.ElectricDipole):
         ket, bra = _unpack_state (state)
        
         ndet = self.na_states[state[0]] * self.nb_states[state[0]]
-        fcasscf = self.make_fcasscf_lpdft_trans(state[0])
+        fcasscf = self.make_fcasscf_lpdft_trans(ket)
         fcasscf_sa = self.make_fcasscf_sa()
         fcasscf.mo_coeff = mo
         #fcasscf.ci = ci[ket]
@@ -122,8 +126,6 @@ class TransitionDipole (lpdft.ElectricDipole):
        
         g_all_explicit = np.zeros(self.ngorb+self.nci)
 
-        #trans=True
-       
         ncore = self.base.ncore
         moH = mo.conj ().T   
         vnocore = self.base.veff2.vhf_c.copy()
@@ -157,22 +159,6 @@ class TransitionDipole (lpdft.ElectricDipole):
         log.debug("g_all explicit ci:\n{}".format(g_all_explicit[self.ngorb :]))
         log.debug("g_all implicit orb:\n{}".format(g_all_implicit[: self.ngorb]))
         log.debug("g_all implicit ci:\n{}".format(g_all_implicit[self.ngorb :]))
-
-
-#        if hasattr (state, '__len__'):
-#            trans=False
-#            offs = (
-#                sum(
-#                    [
-#                        na * nb
-#                        for na, nb in zip(self.na_states[:state[0]], self.nb_states[:state[0]])
-#                    ]
-#                    )
-#                if root > 0
-#                else 0
-#                    )
-#       # offs = 0
-#            g_all[self.ngorb :][offs:][:ndet] += g_all_explicit[self.ngorb :]
 
         gorb, gci = self.unpack_uniq_var(g_all)
         log.debug("g_all orb:\n{}".format(gorb))

@@ -181,9 +181,9 @@ def kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_coeff, ncore, ncas, max_memory
                                   hermi=1)
         t0 = logger.timer(ot, '1-body effective gradient response calculation',
                           *t0)
-        #rho_c = sum(rho_c)
-        feff2._accumulate(ot, ao, weight, rho_c.sum(0), rho_a, fPi, mask, shls_slice,
-                          ao_loc)
+        feff2._accumulate(ot, ao, weight, rho_c.sum(0), rho_a, fPi, non0tab=mask, shls_slice=shls_slice,
+                          ao_loc=ao_loc)
+        
         t0 = logger.timer(ot, '2-body effective gradient response calculation',
                           *t0)
 
@@ -194,7 +194,7 @@ def kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_coeff, ncore, ncas, max_memory
     return feff1, feff2
 
 
-def lazy_kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_cas, hermi=1, max_memory=2000, delta=False):
+def lazy_kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_cas, hermi=1, max_memory=2000, delta=False, trans=False):
     '''1- and 2-body gradient response (hessian-vector products) from MC-PDFT.
     This is the lazy way and doesn't care about memory.'''
     ni, xctype, dens_deriv = ot._numint, ot.xctype, ot.dens_deriv
@@ -209,16 +209,24 @@ def lazy_kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_cas, hermi=1, max_memory=
         in range(2))
     make_crho = tuple(ni._gen_rho_evaluator(ot.mol, c_dm1s[i, :, :], hermi) for
         i in range(2))
+    make_rho_c = tuple(ni._gen_rho_evaluator(ot.mol, dm_core[i, :, :], hermi) for i 
+        in range(2))
 
     for ao, mask, weight, coords in ni.block_loop(ot.mol, ot.grids, nao,
                                                   dens_deriv, max_memory):
         rho = np.asarray([m[0](0, ao, mask, xctype) for m in make_rho])
         crho = np.asarray([m[0](0, ao, mask, xctype) for m in make_crho])
+        rho_c = np.asarray([m[0](0, ao, mask, xctype) for m in make_rho_c])
         t0 = logger.timer(ot, 'untransformed density', *t0)
         Pi = get_ontop_pair_density(ot, rho, ao, cascm2, mo_cas, deriv=dens_deriv,
                                     non0tab=mask)
-        cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas,
-                                     deriv=dens_deriv, non0tab=mask)
+        if trans:
+            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas, rho_c=rho_c,
+                                  deriv=dens_deriv, non0tab=mask)
+        else:
+            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas,
+                                  deriv=dens_deriv, non0tab=mask)
+
         t0 = logger.timer(ot, 'on-top pair density calculation', *t0)
 
         if delta:
@@ -235,11 +243,11 @@ def lazy_kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_cas, hermi=1, max_memory=
         if ao.ndim == 2:
             ao = ao[None, :, :]
 
-        feff1 += ot.get_eff_1body(ao, weight, frho)
+        feff1 += ot.get_eff_1body(ao=ao, weight=weight, kern=frho)
         t0 = logger.timer(ot, '1-body effective gradient response calculation',
                           *t0)
 
-        feff2 += ot.get_eff_2body(ao, weight, fPi, aosym=1)
+        feff2 += ot.get_eff_2body(ao=ao, weight=weight, kern=fPi, aosym=1)         #need to add rho_c here? after weight - not sure 
         t0 = logger.timer(ot, '2-body effective gradient response calculation',
                           *t0)
 
