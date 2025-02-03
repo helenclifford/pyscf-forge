@@ -27,24 +27,17 @@ def lpdft_trans_HellmanFeynman_dipole(mc, mo_coeff=None, state=None, ci=None, ci
     ncas = mc.ncas
     nocc = ncore + ncas
     nelecas = mc.nelecas
-    print('Printing ncore here: ', ncore)
-    print('Printing ncas here: ', ncas)
-    print('Printing nocc here: ', nocc)
-    print('Printing mo_coeff here: ', mo_coeff)
 
     mo_core = mo_coeff[:,:nocc]
     mo_cas = mo_coeff[:,ncore:nocc]
     
-    print('Printing mo_core here: ', mo_core)
-    print('Printing mo_cas here: ', mo_cas)
-
     casdm1 = direct_spin1.trans_rdm12(ci[state[0]], ci[state[1]], ncas, nelecas)[0]
     casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
     
     dm_core = np.dot(mo_core, mo_core.T) * 2
     dm_cas = reduce(np.dot, (mo_cas, casdm1, mo_cas.T))
     
-    tdm = dm_cas + dm_core
+    tdm = dm_cas  #+ dm_core
 
     center = get_guage_origin(mol,origin)
     with mol.with_common_orig(center):
@@ -131,33 +124,33 @@ class TransitionDipole (lpdft.ElectricDipole):
         vnocore = self.base.veff2.vhf_c.copy()
         vnocore[:,:ncore] = -moH @ fcasscf.get_hcore() @ mo[:,:ncore]
         with lib.temporary_env(self.base.veff2, vhf_c=vnocore):
-            g_all_explicit = newton_casscf.gen_g_hop (fcasscf, mo, ci[state[0]], self.base.veff2, verbose)[0]       #ci[state[1]] or ci[state[0]]?
+            g_all_explicit = newton_casscf.gen_g_hop (fcasscf, mo, ci[state[1]], self.base.veff2, verbose)[0]       #ci[state[1]] or ci[state[0]]?
    
         g_all_implicit = newton_casscf.gen_g_hop (fcasscf_sa, mo, ci, feff2, verbose)[0]
 
-#        spin_states = np.asarray(self.spin_states)
-#        gmo_implicit, gci_implicit = self.unpack_uniq_var(g_all_implicit)
-#        for root in range(self.nroots):
-#            idx_spin = spin_states == spin_states[root]
-#            idx = np.where(idx_spin)[0]
-#
-#            gci_root = gci_implicit[root].ravel()
-#
-#            assert root in idx
-#            ci_proj = np.asarray([ci[i].ravel() for i in idx])
-#            gci_sa = np.dot(ci_proj, gci_root)
-#            gci_root -= np.dot(gci_sa, ci_proj)
-#
-#            gci_implicit[root] = gci_root
-#
-#        g_all = self.pack_uniq_var(gmo_implicit, gci_implicit)
-#
-#        g_all[: self.ngorb] += g_all_explicit[: self.ngorb]
+        spin_states = np.asarray(self.spin_states)
+        gmo_implicit, gci_implicit = self.unpack_uniq_var(g_all_implicit)
+        for root in range(self.nroots):
+            idx_spin = spin_states == spin_states[root]
+            idx = np.where(idx_spin)[0]
 
-        g_all = np.zeros(self.ngorb+self.nci)
-        g_all[: self.ngorb] = g_all_explicit[: self.ngorb]
-        g_all[: self.ngorb] = g_all_implicit[: self.ngorb]
-        g_all[self.ngorb :] = g_all_implicit[self.ngorb :]
+            gci_root = gci_implicit[root].ravel()
+
+            assert root in idx
+            ci_proj = np.asarray([ci[i].ravel() for i in idx])
+            gci_sa = np.dot(ci_proj, gci_root)
+            gci_root -= np.dot(gci_sa, ci_proj)
+
+            gci_implicit[root] = gci_root
+
+        g_all = self.pack_uniq_var(gmo_implicit, gci_implicit)
+
+        g_all[: self.ngorb] += g_all_explicit[: self.ngorb]
+
+       # g_all = np.zeros(self.ngorb+self.nci)
+       # g_all[: self.ngorb] += g_all_explicit[: self.ngorb]
+       # g_all[: self.ngorb] += g_all_implicit[: self.ngorb]
+       # g_all[self.ngorb :] += g_all_implicit[self.ngorb :]
 
         # Debug
         log.debug("g_all explicit orb:\n{}".format(g_all_explicit[: self.ngorb]))
