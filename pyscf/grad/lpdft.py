@@ -643,7 +643,7 @@ class Gradients(sacasscf.Gradients):
             ci_bra = ci[state[0]]
             ci_ket = ci[state[1]]
             
-            mo_cas = mo[:,ncore:][:,:ncas]
+            mo_cas = mo[:,ncore:ncore+ncas]
             moH_cas = mo_cas.conj ().T
 
             casdm1s = direct_spin1.trans_rdm1s(ci_bra, ci_ket, ncas, nelecas)

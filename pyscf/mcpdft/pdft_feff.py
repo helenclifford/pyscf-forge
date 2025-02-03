@@ -147,17 +147,15 @@ def kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_coeff, ncore, ncas, max_memory
         crho = np.asarray([make_crho(i, ao, mask, xctype) for i in range(2)])
         rho_a = sum([make_rho_a(i, ao, mask, xctype) for i in range(2)])
         rho_c = np.asarray([make_rho_c(i, ao, mask, xctype) for i in range(2)])
-        print('Printing rho_c Here - feff after: ', rho_c)
+        #print('Printing rho_c Here - feff after: ', rho_c)
         t0 = logger.timer(ot, 'untransformed densities (core and total)', *t0)
 
         Pi = get_ontop_pair_density(ot, rho, ao, cascm2, mo_cas,
                                   deriv=dens_deriv, non0tab=mask)
         if trans:
-            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas, rho_c=rho_c,
-                                  deriv=dens_deriv, non0tab=mask)
-        else:
-            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas,
-                                  deriv=dens_deriv, non0tab=mask)          
+            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas, rho_c=rho_c,deriv=dens_deriv, non0tab=mask)
+        else: 
+            cPi = get_ontop_pair_density(ot, crho, ao, c_cascm2, mo_cas, deriv=dens_deriv, non0tab=mask)          
 
         t0 = logger.timer(ot, 'on-top pair density calculation', *t0)
 
@@ -167,8 +165,9 @@ def kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_coeff, ncore, ncas, max_memory
 
         vot, fot = ot.eval_ot(rho, Pi, weights=weight, dderiv=2,
                               _unpack_vot=False)[1:]
+        
         frho, fPi = contract_fot(ot, fot, rho, Pi, crho, cPi, unpack=True,
-                                 vot_packed=vot)
+                                vot_packed=vot)
 
         t0 = logger.timer(ot, 'effective gradient response kernel calculation',
                           *t0)

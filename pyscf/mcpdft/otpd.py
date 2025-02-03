@@ -84,21 +84,18 @@ def get_ontop_pair_density (ot, rho, ao, cascm2, mo_cas, rho_c=None, deriv=0,
     if ao.ndim == 2:
         ao = ao.reshape (1, ao.shape[0], ao.shape[1])
     
-    print('PRINTING rho_c Here - otpd: ', rho_c)
-    
     if rho_c is not None:
         if rho_c.ndim == 2:
             rho_c = rho_c.reshape (rho_c.shape[0], 1, rho_c.shape[1])
         rho += rho_c
+        #rho += (0.5 * rho_c)
     
-    print('PRINTING rho here after - otpd: ', rho)
-
     # First cumulant and derivatives (chain rule! product rule!)
     t0 = (logger.process_clock (), logger.perf_counter ())
     Pi = np.zeros_like (rho[0])[:min(rho.shape[1],5)]
     Pi[0] = rho[0,0] * rho[1,0]
     if rho_c is not None:
-        Pi[0] -= rho_c[0,0] * rho_c[1,0]
+        Pi[0] -= (rho_c[0,0] * rho_c[1,0])
 
     if deriv > 0:
         assert (rho.shape[1] >= 4), rho.shape
@@ -163,7 +160,7 @@ def get_ontop_pair_density (ot, rho, ao, cascm2, mo_cas, rho_c=None, deriv=0,
         t0 = logger.timer (ot, 'otpd second cumulant off-top Laplacian', *t0)
     
     if rho_c is not None:
-        rho -= rho_c
+        rho -= (rho_c)
 
     # Unfix dimensionality of rho, ao, and Pi
     if Pi.shape[0] == 1:
