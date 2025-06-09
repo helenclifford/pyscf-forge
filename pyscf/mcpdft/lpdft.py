@@ -497,7 +497,6 @@ class _LPDFT(mcpdft.MultiStateMCPDFTSolver):
         elif isinstance(self, _DFCASSCF):
             raise NotImplementedError("LPDFT dipole moments with density-fitting ERIs")
         
-        print("our function!") 
         from pyscf.prop.dip_moment.lpdft import ElectricDipole
         dip_obj = ElectricDipole(self)
         mol_dipole = dip_obj.kernel(state=state, unit=unit, origin=origin)

@@ -481,7 +481,7 @@ class Gradients(sacasscf.Gradients):
         fcasscf_sa = self.make_fcasscf_sa()
 
         fcasscf.mo_coeff = mo
-        fcasscf.ci = ci[state[0]]
+        fcasscf.ci = ci[state]
 
         fcasscf.get_hcore = self.base.get_lpdft_hcore
         fcasscf_sa.get_hcore = lambda: feff1
@@ -494,7 +494,7 @@ class Gradients(sacasscf.Gradients):
             casdm1, casdm2 = direct_spin1.trans_rdm12 (ci[state[0]], ci[state[1]], self.ncas, self.nelecas)
             casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
             casdm2 = 0.5 * (casdm2 + casdm2.transpose(1,0,3,2))
-            
+
             ncore = self.base.ncore
             moH = mo.conj ().T
             
