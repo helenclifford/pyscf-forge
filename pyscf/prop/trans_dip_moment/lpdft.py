@@ -28,22 +28,26 @@ def lpdft_trans_HellmanFeynman_dipole(mc, mo_coeff=None, state=None, ci=None, ci
     nocc = ncore + ncas
     nelecas = mc.nelecas
 
-    mo_core = mo_coeff[:,:nocc]
+    mo_core = mo_coeff[:,:ncore]
     mo_cas = mo_coeff[:,ncore:nocc]
     
     casdm1 = direct_spin1.trans_rdm12(ci[state[0]], ci[state[1]], ncas, nelecas)[0]
-    casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
+    
+    #casdm1 = mc.fcisolver.make_rdm1(ci, ncas, nelecas)
+    
+    #casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
     
     dm_core = np.dot(mo_core, mo_core.T) * 2
     dm_cas = reduce(np.dot, (mo_cas, casdm1, mo_cas.T))
     
-    tdm = dm_cas  #+ dm_core
+    tdm = dm_cas + dm_core
 
     center = get_guage_origin(mol,origin)
     with mol.with_common_orig(center):
         ao_dip = mol.intor_symmetric('int1e_r', comp=3)
     elec_term = -np.tensordot(ao_dip, tdm).real
-    
+    #elec_term = -np.einsum('xij,ij->x', dip_ao, dm_ao).real
+
     return elec_term
 
 
@@ -69,16 +73,19 @@ class TransitionDipole (lpdft.ElectricDipole):
             ci=None, origin='Coord_Center', **kwargs):
         if state is None: state   = self.state
         if verbose is None: verbose = self.verbose
-        if mo is None: mo      = self.base.mo_coeff
-        if ci is None: ci      = self.base.ci
+        if mo is None: mo = self.base.mo_coeff
+        if ci is None: ci = self.base.ci
         ket, bra = _unpack_state (state)
-
+        
+        ci_bra = ci[:bra]
+        ci_ket = ci[:ket]
+        
         #fcasscf = self.make_fcasscf_lpdft_trans(ket)
         fcasscf = self.make_fcasscf(state)
         fcasscf.mo_coeff = mo
         fcasscf.ci = ci
 
-        elec_term = lpdft_trans_HellmanFeynman_dipole (fcasscf, mo_coeff=mo, state=state, ci=ci, ci_bra = ci[state[0]], ci_ket = ci[state[1]], origin=origin)
+        elec_term = lpdft_trans_HellmanFeynman_dipole (fcasscf, mo_coeff=mo, state=state, ci=ci, ci_bra = ci_bra, ci_ket = ci_ket, origin=origin)
         return elec_term       
 
     def make_fcasscf_lpdft_trans (self, state=None, casscf_attr=None,fcisolver_attr=None):
@@ -89,7 +96,7 @@ class TransitionDipole (lpdft.ElectricDipole):
         ci, ncas, nelecas = self.base.ci, self.base.ncas, self.base.nelecas
 
         casdm1, casdm2 = direct_spin1.trans_rdm12 (ci[bra], ci[ket], ncas, nelecas)
-        casdm1 = 0.5 * (casdm1 + casdm1.T)
+        #casdm1 = 0.5 * (casdm1 + casdm1.T)
         casdm2 = 0.5 * (casdm2 + casdm2.transpose (1,0,3,2))
         fcisolver_attr['make_rdm12'] = lambda *args, **kwargs : (casdm1, casdm2)
         fcisolver_attr['make_rdm1'] = lambda *args, **kwargs : casdm1
@@ -125,9 +132,15 @@ class TransitionDipole (lpdft.ElectricDipole):
         vnocore[:,:ncore] = -moH @ fcasscf.get_hcore() @ mo[:,:ncore]
         with lib.temporary_env(self.base.veff2, vhf_c=vnocore):
             g_all_explicit = newton_casscf.gen_g_hop (fcasscf, mo, ci[state[1]], self.base.veff2, verbose)[0]       #ci[state[1]] or ci[state[0]]?
-   
+            #g_all_explicit = newton_casscf.gen_g_hop (fcasscf, mo, ci[ket], self.base.veff2, verbose)[0]       
+
         g_all_implicit = newton_casscf.gen_g_hop (fcasscf_sa, mo, ci, feff2, verbose)[0]
 
+        log.debug("g_all explicit orb:\n{}".format(g_all_explicit[: self.ngorb]))
+        log.debug("g_all explicit ci:\n{}".format(g_all_explicit[self.ngorb :]))
+        log.debug("g_all implicit orb:\n{}".format(g_all_implicit[: self.ngorb]))
+        log.debug("g_all implicit ci:\n{}".format(g_all_implicit[self.ngorb :]))
+        
         spin_states = np.asarray(self.spin_states)
         gmo_implicit, gci_implicit = self.unpack_uniq_var(g_all_implicit)
         for root in range(self.nroots):
@@ -147,16 +160,24 @@ class TransitionDipole (lpdft.ElectricDipole):
 
         g_all[: self.ngorb] += g_all_explicit[: self.ngorb]
 
+        #offs = (
+        #    sum(
+        #        [
+        #            na * nb
+        #            for na, nb in zip(self.na_states[:bra], self.nb_states[:bra])
+        #        ]
+        #    )
+        #    if root > 0
+        #    else 0
+        #)
+        #g_all[self.ngorb :][offs:][:ndet] += g_all_explicit[self.ngorb :]
+        #g_all[self.ngorb + offs : self.ngorb + offs + ndet] += g_all_explicit[self.ngorb :]
+ 
        # g_all = np.zeros(self.ngorb+self.nci)
        # g_all[: self.ngorb] += g_all_explicit[: self.ngorb]
        # g_all[: self.ngorb] += g_all_implicit[: self.ngorb]
        # g_all[self.ngorb :] += g_all_implicit[self.ngorb :]
 
-        # Debug
-        log.debug("g_all explicit orb:\n{}".format(g_all_explicit[: self.ngorb]))
-        log.debug("g_all explicit ci:\n{}".format(g_all_explicit[self.ngorb :]))
-        log.debug("g_all implicit orb:\n{}".format(g_all_implicit[: self.ngorb]))
-        log.debug("g_all implicit ci:\n{}".format(g_all_implicit[self.ngorb :]))
 
         gorb, gci = self.unpack_uniq_var(g_all)
         log.debug("g_all orb:\n{}".format(gorb))

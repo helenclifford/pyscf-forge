@@ -466,15 +466,15 @@ class Gradients(sacasscf.Gradients):
 
         log = logger.new_logger(self, verbose)
         
-        if hasattr (state, '__len__'): 
+        if hasattr (state, '__len__'):         #HELEN!!!! Edited here 
             trans=True
             ndet = self.na_states[state[0]] * self.nb_states[state[0]]
             fcasscf = self.make_fcasscf(state[0])
 
         else:   
             trans=False
-            ndet = self.na_states[state] * self.nb_states[state]
-            fcasscf = self.make_fcasscf(state)
+        ndet = self.na_states[state] * self.nb_states[state]
+        fcasscf = self.make_fcasscf(state)
 
         # Exploit (hopefully) the fact that the zero-order density is
         # really just the State Average Density!
@@ -489,10 +489,10 @@ class Gradients(sacasscf.Gradients):
         #Verify correct shape of g_all_explicit
         g_all_explicit = np.zeros(self.ngorb+self.nci)
         
-        if hasattr (state, '__len__'):
+        if hasattr (state, '__len__'):           #HELEN!!!! Edited here
             trans=True
             casdm1, casdm2 = direct_spin1.trans_rdm12 (ci[state[0]], ci[state[1]], self.ncas, self.nelecas)
-            casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
+            #casdm1 = 0.5 * (np.array(casdm1) + np.array(casdm1).T)
             casdm2 = 0.5 * (casdm2 + casdm2.transpose(1,0,3,2))
 
             ncore = self.base.ncore
@@ -505,9 +505,7 @@ class Gradients(sacasscf.Gradients):
         
         else:
             trans=False
-            g_all_explicit = newton_casscf.gen_g_hop(
-                fcasscf, mo, ci[state], self.base.veff2, verbose
-            )[0]
+            g_all_explicit = newton_casscf.gen_g_hop(fcasscf, mo, ci[state], self.base.veff2, verbose)[0]
            
             
         g_all_implicit = newton_casscf.gen_g_hop(fcasscf_sa, mo, ci, feff2, verbose)[0]
@@ -663,8 +661,7 @@ class Gradients(sacasscf.Gradients):
         cascm2 = _dms.dm2_cumulant(casdm2, casdm1s)
 
         
-
-
+        
         return self.base.get_pdft_feff(
             mo=mo,
             ci=ci,
@@ -677,7 +674,8 @@ class Gradients(sacasscf.Gradients):
             incl_coul=True,
             delta=True,
             trans = trans,
-        )
+        )     
+
 
     def get_Aop_Adiag(
         self, verbose=None, mo=None, ci=None, eris=None, state=None, **kwargs

@@ -125,7 +125,6 @@ def kernel(ot, dm1s, cascm2, mo_coeff, ncore, ncas,
         dm_cas = tag_array(dm_cas, mo_coeff=dm1s.mo_coeff[:, :, ncore:nocc],
                            mo_occ=dm1s.mo_occ[:, ncore:nocc])
 
-
     # rho generators
     make_rho_c = ni._gen_rho_evaluator(ot.mol, dm_core, hermi)[0]
     make_rho_a = ni._gen_rho_evaluator(ot.mol, dm_cas, hermi)[0]

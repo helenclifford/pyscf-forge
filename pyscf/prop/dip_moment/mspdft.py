@@ -146,6 +146,10 @@ class ElectricDipole (mspdft.Gradients):
         ngorb, nci = self.ngorb, self.nci
         Lvec_v = Lvec[:ngorb+nci]
         Lorb, Lci = self.unpack_uniq_var (Lvec_v)
+        #print('Printing Lvec here Helen: ', Lvec)
+        #print('Printing Lorb here Helen: ', Lorb)
+        #print('Printing Lci here Helen: ', Lci)
+        #print('Printing Lvec_v here Helen: ', Lvec_v)
 
         mol   = mc.mol
         ncore = mc.ncore

@@ -107,6 +107,7 @@ def kernel(ot, dm1s, cascm2, c_dm1s, c_cascm2, mo_coeff, ncore, ncas, max_memory
     if hasattr(dm1s, 'mo_coeff') and hasattr(dm1s, 'mo_occ'):
         dm_core = tag_array(dm_core, mo_coeff=dm1s.mo_coeff[:, :, :ncore],
                             mo_occ=dm1s.mo_occ[:, :ncore])
+        
         dm_cas = tag_array(dm_cas, mo_coeff=dm1s.mo_coeff[:, :, ncore:nocc],
                            mo_occ=dm1s.mo_occ[:, ncore:nocc])
 
